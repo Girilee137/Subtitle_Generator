@@ -1,0 +1,65 @@
+envVarGroups:
+  - name: subtitle-platform-production
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: R2_ENDPOINT_URL
+        sync: false
+      - key: R2_BUCKET
+        sync: false
+      - key: R2_ACCESS_KEY_ID
+        sync: false
+      - key: R2_SECRET_ACCESS_KEY
+        sync: false
+      - key: CORS_ORIGINS
+        sync: false
+      - key: ADMIN_EMAIL
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: STORAGE_BACKEND
+        value: r2
+      - key: ASR_PROVIDER
+        value: gemini
+      - key: GEMINI_MODEL
+        value: gemini-3.8-flash
+      - key: FAKE_ASR
+        value: "0"
+      - key: FAKE_GEMINI
+        value: "0"
+      - key: STORAGE_ROOT
+        value: /tmp/subtitle-storage
+      - key: MAX_UPLOAD_MB
+        value: "500"
+      - key: USER_QUOTA_MB
+        value: "5000"
+
+services:
+  - type: web
+    name: subtitle-platform-api
+    runtime: docker
+    plan: starter
+    region: oregon
+    rootDir: backend
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    dockerCommand: sh -c "alembic upgrade head && exec uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-10000}"
+    healthCheckPath: /health
+    envVars:
+      - fromGroup: subtitle-platform-production
+
+  - type: worker
+    name: subtitle-platform-worker
+    runtime: docker
+    plan: starter
+    region: oregon
+    rootDir: backend
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    dockerCommand: python -m app.workers.runner --queue default
+    envVars:
+      - fromGroup: subtitle-platform-production
