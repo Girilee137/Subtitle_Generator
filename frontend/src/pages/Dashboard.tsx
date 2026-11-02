@@ -2,6 +2,8 @@ import { useMemo, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { CheckCircle2, Pause, Pencil, Play, Plus, RotateCcw, Search, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
+import { useAuthStore } from '@/stores/authStore'
+import { useDemoProjectsStore } from '@/stores/demoProjectsStore'
 import {
   useCreateProjectMutation,
   useDeleteProjectMutation,
@@ -22,6 +24,11 @@ const statusClass: Record<ProcessingStatus, string> = {
 }
 
 export function DashboardPage() {
+  const demoMode = useAuthStore((state) => state.demoMode)
+  return demoMode ? <DemoDashboard /> : <LiveDashboard />
+}
+
+function LiveDashboard() {
   const [title, setTitle] = useState('')
   const [query, setQuery] = useState('')
   const [editing, setEditing] = useState<Project | null>(null)
@@ -146,6 +153,142 @@ export function DashboardPage() {
             <input
               value={editing.title}
               onChange={(event) => setEditing({ ...editing, title: event.target.value })}
+            />
+            <div className="modal-actions">
+              <button type="button" onClick={() => setEditing(null)}>
+                Cancel
+              </button>
+              <button type="submit">
+                <CheckCircle2 size={16} />
+                Save
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+    </section>
+  )
+}
+
+function DemoDashboard() {
+  const [title, setTitle] = useState('')
+  const [query, setQuery] = useState('')
+  const [editing, setEditing] = useState<Project | null>(null)
+  const projects = useDemoProjectsStore((state) => state.projects)
+  const createProject = useDemoProjectsStore((state) => state.createProject)
+  const renameProject = useDemoProjectsStore((state) => state.renameProject)
+  const deleteProject = useDemoProjectsStore((state) => state.deleteProject)
+  const visibleProjects = useMemo(
+    () => projects.filter((project) => project.title.toLowerCase().includes(query.trim().toLowerCase())),
+    [projects, query],
+  )
+
+  function submit(event: FormEvent) {
+    event.preventDefault()
+    const nextTitle = title.trim()
+    if (!nextTitle) return
+    createProject(nextTitle)
+    setTitle('')
+    toast.success('Demo project added in this browser.')
+  }
+
+  function rename(event: FormEvent) {
+    event.preventDefault()
+    if (!editing) return
+    const nextTitle = editing.title.trim()
+    if (!nextTitle) {
+      toast.error('Enter a project title first.')
+      return
+    }
+    renameProject(editing.project_id, nextTitle)
+    setEditing(null)
+  }
+
+  return (
+    <section className="dashboard">
+      <div className="section-header">
+        <div>
+          <h1>Dashboard</h1>
+          <p>{projects.length} demo projects · saved in this browser only</p>
+        </div>
+        <form className="create-project" onSubmit={submit}>
+          <input
+            value={title}
+            onChange={(event) => setTitle(event.target.value)}
+            placeholder="Project title"
+            aria-label="Project title"
+            maxLength={120}
+            required
+          />
+          <button type="submit">
+            <Plus size={16} />
+            Create demo project
+          </button>
+        </form>
+      </div>
+
+      <div className="demo-notice" role="note">
+        Demo workspace: sample statuses are illustrative. Projects stay in this browser; uploads, transcription,
+        editing, and account actions need a backend and are not available in this preview.
+      </div>
+
+      <div className="search-row">
+        <Search size={18} />
+        <input
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          placeholder="Search demo projects"
+          aria-label="Search demo projects"
+        />
+      </div>
+
+      <div className="project-table">
+        <div className="project-row table-head">
+          <span>Title</span>
+          <span>Status</span>
+          <span>Updated</span>
+          <span>Actions</span>
+        </div>
+        {visibleProjects.map((project) => (
+          <div className="project-row" key={project.project_id}>
+            <strong className="project-title">{project.title}</strong>
+            <span className={statusClass[project.status]}>{project.status}</span>
+            <span>{new Date(project.updated_at).toLocaleDateString()}</span>
+            <span className="row-actions">
+              <button
+                type="button"
+                className="icon-button"
+                onClick={() => setEditing(project)}
+                aria-label={`Rename ${project.title}`}
+              >
+                <Pencil size={16} />
+              </button>
+              <button
+                type="button"
+                className="icon-button danger"
+                onClick={() => deleteProject(project.project_id)}
+                aria-label={`Delete ${project.title}`}
+              >
+                <Trash2 size={16} />
+              </button>
+            </span>
+          </div>
+        ))}
+        {visibleProjects.length === 0 && (
+          <div className="empty-state">{query ? 'No matching demo projects.' : 'No demo projects yet.'}</div>
+        )}
+      </div>
+
+      {editing && (
+        <div className="modal-backdrop">
+          <form className="modal" onSubmit={rename}>
+            <h2>Rename demo project</h2>
+            <input
+              value={editing.title}
+              onChange={(event) => setEditing({ ...editing, title: event.target.value })}
+              aria-label="New project title"
+              maxLength={120}
+              required
             />
             <div className="modal-actions">
               <button type="button" onClick={() => setEditing(null)}>

@@ -1,43 +1,58 @@
 import { useState, type FormEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { authApi } from '@/api/routes'
-import { useLoginMutation, useRegisterMutation } from '@/hooks/useApi'
+import { useRegisterMutation } from '@/hooks/useApi'
+import { useAuthStore } from '@/stores/authStore'
 
 export function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const login = useLoginMutation()
+  const setDemoSession = useAuthStore((state) => state.setDemoSession)
   const navigate = useNavigate()
 
   function submit(event: FormEvent) {
     event.preventDefault()
-    login.mutate(
-      { email, password },
-      {
-        onSuccess: () => navigate('/'),
-      },
-    )
+    const normalizedEmail = email.trim().toLowerCase()
+    const name = normalizedEmail.split('@')[0] || 'Demo user'
+    setDemoSession({
+      user_id: 'local-demo-user',
+      name,
+      email: normalizedEmail,
+      role: 'USER',
+      is_active: true,
+      storage_used: 0,
+      server_processing_consent_at: null,
+      created_at: new Date().toISOString(),
+    })
+    navigate('/')
   }
 
   return (
     <AuthShell title="Sign in">
+      <div className="demo-notice" role="note">
+        Preview access only. Enter any valid email and a password of at least 8 characters. Nothing is sent to a
+        server; this is not secure authentication.
+      </div>
       <form onSubmit={submit} className="form">
-        <input value={email} onChange={(event) => setEmail(event.target.value)} type="email" placeholder="Email" />
+        <input
+          value={email}
+          onChange={(event) => setEmail(event.target.value)}
+          type="email"
+          placeholder="Email"
+          autoComplete="email"
+          required
+        />
         <input
           value={password}
           onChange={(event) => setPassword(event.target.value)}
           type="password"
           placeholder="Password"
+          autoComplete="current-password"
+          minLength={8}
+          required
         />
-        {login.isError && <p className="form-error">Credentials were not accepted.</p>}
-        <button type="submit" disabled={login.isPending}>
-          Sign in
-        </button>
+        <button type="submit">Open preview</button>
       </form>
-      <p className="auth-link">
-        <Link to="/register">Create account</Link>
-        <Link to="/forgot-password">Reset password</Link>
-      </p>
     </AuthShell>
   )
 }

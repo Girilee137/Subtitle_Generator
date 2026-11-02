@@ -1,7 +1,7 @@
 import { BrowserRouter, Route, Routes } from 'react-router-dom'
 import { Toaster } from 'sonner'
 import { AppLayout } from '@/components/layout/AppLayout'
-import { GuestOnly, RequireAdmin, RequireAuth } from '@/components/routing/Guards'
+import { GuestOnly, RequireAdmin, RequireAuth, RequireServerAuth } from '@/components/routing/Guards'
 import { AdminPage } from '@/pages/Admin'
 import { ForgotPasswordPage, LoginPage, RegisterPage, ResetPasswordPage } from '@/pages/auth/AuthPages'
 import { DashboardPage } from '@/pages/Dashboard'
@@ -24,11 +24,13 @@ export default function App() {
         <Route element={<RequireAuth />}>
           <Route element={<AppLayout />}>
             <Route index element={<DashboardPage />} />
-            <Route path="/projects/:id" element={<ProjectPage />} />
-            <Route path="/tracks/:id" element={<EditorPage />} />
-            <Route path="/profile" element={<ProfilePage />} />
-            <Route element={<RequireAdmin />}>
-              <Route path="/admin" element={<AdminPage />} />
+            <Route element={<RequireServerAuth />}>
+              <Route path="/projects/:id" element={<ProjectPage />} />
+              <Route path="/tracks/:id" element={<EditorPage />} />
+              <Route path="/profile" element={<ProfilePage />} />
+              <Route element={<RequireAdmin />}>
+                <Route path="/admin" element={<AdminPage />} />
+              </Route>
             </Route>
           </Route>
         </Route>
